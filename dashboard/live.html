@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FACTOR-X Live Digital Twin Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="bg-gray-900 text-white p-4 flex justify-between items-center shadow-lg">
+        <div>
+            <h1 class="text-xl font-bold text-green-400"><i class="fas fa-satellite-dish mr-2"></i> FACTOR-X LIVE TELEMETRY</h1>
+            <p class="text-xs text-gray-400">Real-time IoT Edge Data Stream</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="text-sm text-gray-300 hover:text-white"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <span class="text-xs font-bold text-red-500 border border-red-500 px-2 py-1 rounded blink">LIVE</span>
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- Live Chart -->
+        <div class="bg-white p-6 rounded-xl shadow border border-gray-200 flex-1 flex flex-col">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Total Factory Energy Load (kWh)</h3>
+            <div class="flex-1 relative w-full h-full">
+                <canvas id="liveChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Live Machine States -->
+        <div class="w-full lg:w-96 flex flex-col gap-6">
+            
+            <!-- Motor 3 HUD -->
+            <div id="motor3-card" class="bg-white p-6 rounded-xl shadow border-l-4 border-green-500 transition-colors duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Motor-03</h3>
+                    <span id="motor3-status" class="bg-green-100 text-green-700 px-2 py-1 text-xs font-bold rounded">NORMAL</span>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Temperature</p>
+                        <div class="flex items-end justify-between">
+                            <h4 id="live-temp" class="text-2xl font-bold text-gray-800">-- °C</h4>
+                            <span class="text-xs text-gray-400">Max limit: 85°C</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                            <div id="temp-bar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs text-gray-500 font-medium">Vibration</p>
+                        <div class="flex items-end justify-between">
+                            <h4 id="live-vib" class="text-2xl font-bold text-gray-800">-- mm/s</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ai-intervention" class="mt-4 p-3 bg-red-50 text-red-700 text-sm font-semibold rounded hidden">
+                    <i class="fas fa-robot mr-2"></i> AI INTERVENTION REQUIRED: High Friction Detected.
+                </div>
+            </div>
+
+            <!-- Feed Log -->
+            <div class="bg-gray-900 text-green-400 p-4 rounded-xl shadow font-mono text-xs flex-1 overflow-y-auto" id="terminal">
+                <p>> Waiting for IoT Gateway connection...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Setup Chart.js
+        const ctx = document.getElementById('liveChart').getContext('2d');
+        const maxDataPoints = 60;
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(maxDataPoints).fill(''),
+                datasets: [{
+                    label: 'Live Energy Draw',
+                    data: Array(maxDataPoints).fill(null),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    fill: true,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                scales: {
+                    x: { display: false },
+                    y: { min: 20, max: 150 }
+                }
+            }
+        });
+
+        const terminal = document.getElementById('terminal');
+
+        function updateTerminal(msg) {
+            terminal.innerHTML += `<p>> ${msg}</p>`;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Connect to SSE API
+        const evtSource = new EventSource("http://127.0.0.1:8000/api/stream");
+        updateTerminal("Connected to FACTOR-X Edge API.");
+
+        evtSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // Update Chart
+            const dataArr = chart.data.datasets[0].data;
+            dataArr.push(data.energy);
+            dataArr.shift();
+            chart.update();
+
+            // Update UI
+            document.getElementById('live-temp').innerText = data.m3_temp.toFixed(1) + ' °C';
+            document.getElementById('live-vib').innerText = data.m3_vib.toFixed(2) + ' mm/s';
+            
+            // Temp bar calculation (assume max 100C for the bar)
+            const tempPct = Math.min((data.m3_temp / 100) * 100, 100);
+            const tempBar = document.getElementById('temp-bar');
+            tempBar.style.width = tempPct + '%';
+
+            const m3Card = document.getElementById('motor3-card');
+            const m3Status = document.getElementById('motor3-status');
+            const aiIntervention = document.getElementById('ai-intervention');
+
+            if (data.is_anomaly) {
+                m3Card.classList.remove('border-green-500');
+                m3Card.classList.add('border-red-500', 'bg-red-50');
+                
+                m3Status.classList.remove('bg-green-100', 'text-green-700');
+                m3Status.classList.add('bg-red-600', 'text-white', 'blink');
+                m3Status.innerText = "CRITICAL ANOMALY";
+                
+                tempBar.classList.remove('bg-green-500');
+                tempBar.classList.add('bg-red-600');
+                
+                aiIntervention.classList.remove('hidden');
+                
+                updateTerminal(`<span class="text-red-500">ALERT: Motor-03 threshold breached. Temp: ${data.m3_temp}°C, Vib: ${data.m3_vib}mm/s</span>`);
+            } else {
+                m3Card.classList.remove('border-red-500', 'bg-red-50');
+                m3Card.classList.add('border-green-500', 'bg-white');
+                
+                m3Status.classList.remove('bg-red-600', 'text-white', 'blink');
+                m3Status.classList.add('bg-green-100', 'text-green-700');
+                m3Status.innerText = "NORMAL";
+
+                tempBar.classList.remove('bg-red-600');
+                tempBar.classList.add('bg-green-500');
+
+                aiIntervention.classList.add('hidden');
+                
+                if (Math.random() > 0.8) {
+                    updateTerminal(`Telemetry packet received. E=${data.energy}kWh`);
+                }
+            }
+        };
+
+        evtSource.onerror = function() {
+            updateTerminal("<span class='text-red-500'>Connection lost. Make sure FastAPI server is running.</span>");
+            evtSource.close();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FACTOR-X Industrial Energy Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-900 text-white flex flex-col">
+        <div class="p-6 border-b border-gray-800">
+            <h1 class="text-2xl font-bold tracking-wider text-green-400">FACTOR-X</h1>
+            <p class="text-xs text-gray-400 mt-1">SME Industrial Intelligence</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="index.html" class="flex items-center gap-3 p-3 bg-gray-800 rounded-lg text-white"><i class="fas fa-chart-line"></i> Energy Intelligence</a>
+            <a href="live.html" class="flex items-center gap-3 p-3 hover:bg-red-900 rounded-lg text-red-400 font-bold transition-colors"><i class="fas fa-broadcast-tower blink"></i> LIVE IoT Edge Stream</a>
+            <a href="#" class="flex items-center gap-3 p-3 hover:bg-gray-800 rounded-lg text-gray-400"><i class="fas fa-bolt"></i> Optimization AI</a>
+            <a href="#" onclick="openRoiModal()" class="flex items-center gap-3 p-3 hover:bg-green-900 rounded-lg text-green-400 font-bold transition-colors"><i class="fas fa-calculator"></i> SME ROI Calculator</a>
+        </nav>
+        <div class="p-4">
+            <div class="text-xs text-gray-500 text-center">Live API Connection <span class="text-green-500">●</span></div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-y-auto">
+        <!-- Header -->
+        <header class="bg-white p-6 shadow-sm flex justify-between items-center" id="dashboard-header">
+            <h2 class="text-xl font-semibold text-gray-800">Live Digital Twin Dashboard</h2>
+            <div class="flex items-center gap-4">
+                <button onclick="downloadPDF()" class="text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1 rounded hover:bg-blue-100 transition-colors" id="pdf-btn">
+                    <i class="fas fa-file-pdf mr-1"></i> Export Report
+                </button>
+                <span class="text-sm font-medium text-green-600 bg-green-100 px-3 py-1 rounded-full"><i class="fas fa-circle text-xs mr-1"></i> AI Engine Active</span>
+                <img src="https://ui-avatars.com/api/?name=Plant+Manager&background=0D8ABC&color=fff" class="w-8 h-8 rounded-full">
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium mb-1">Total Energy (30 days)</p>
+                <div class="flex justify-between items-end">
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpi-energy">-- <span class="text-lg text-gray-500 font-normal">kWh</span></h3>
+                    <span class="text-green-500 text-sm font-semibold flex items-center" id="kpi-energy-diff"><i class="fas fa-arrow-down mr-1"></i> --%</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium mb-1">Specific Energy (SEC)</p>
+                <div class="flex justify-between items-end">
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpi-sec">-- <span class="text-lg text-gray-500 font-normal">kWh/u</span></h3>
+                    <span class="text-green-500 text-sm font-semibold flex items-center" id="kpi-sec-diff"><i class="fas fa-arrow-down mr-1"></i> --%</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium mb-1">Estimated CO₂ Offset</p>
+                <div class="flex justify-between items-end">
+                    <h3 class="text-3xl font-bold text-gray-800" id="kpi-co2">-- <span class="text-lg text-gray-500 font-normal">tons</span></h3>
+                    <span class="text-green-500 text-sm font-semibold flex items-center"><i class="fas fa-arrow-up mr-1"></i></span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium mb-1">Avg Machine Health</p>
+                <div class="flex justify-between items-end">
+                    <h3 class="text-3xl font-bold text-gray-800">92 <span class="text-lg text-gray-500 font-normal">%</span></h3>
+                    <span class="text-green-500 text-sm font-semibold flex items-center"><i class="fas fa-arrow-up mr-1"></i> 8%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chart and Alerts -->
+        <div class="px-6 pb-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+            
+            <!-- Chart Section -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-2 flex flex-col">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Daily Energy Consumption Trend</h3>
+                <div class="flex-1 relative w-full h-64">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- AI Alerts & Recommendations -->
+            <div class="flex flex-col gap-6">
+                <!-- Alerts -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Live AI Alerts</h3>
+                        <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-bold">Unsupervised ML</span>
+                    </div>
+                    <div class="space-y-4" id="alert-container">
+                        <p class="text-sm text-gray-500 text-center">Loading anomaly data from API...</p>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex-1">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Optimization Actions</h3>
+                    <div class="space-y-4">
+                        <button class="w-full text-left p-4 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-green-800">Schedule Motor-03 Service</p>
+                                    <p class="text-xs text-green-700">Resolves high friction / high idling power</p>
+                                </div>
+                                <i class="fas fa-wrench text-green-600"></i>
+                            </div>
+                        </button>
+                        <button class="w-full text-left p-4 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-blue-800">Implement Load Shifting</p>
+                                    <p class="text-xs text-blue-700">Shift 10% peak load to night shift</p>
+                                </div>
+                                <i class="fas fa-chevron-right text-blue-600"></i>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- ROI Modal -->
+    <div id="roiModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 relative">
+            <button onclick="closeRoiModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">FACTOR-X SME ROI Calculator</h2>
+            <p class="text-sm text-gray-500 mb-6">Enter your factory's current metrics to see your estimated payback period based on our AI's ~20% energy reduction capability.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Monthly Energy Bill (₹)</label>
+                    <input type="number" id="roi-bill" value="500000" class="w-full border border-gray-300 rounded-lg p-3 text-lg focus:ring-2 focus:ring-green-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">FACTOR-X Subscription Plan</label>
+                    <select id="roi-plan" class="w-full border border-gray-300 rounded-lg p-3 text-lg focus:ring-2 focus:ring-green-500 focus:outline-none">
+                        <option value="15000">Professional (₹15,000 / month)</option>
+                        <option value="5000">Starter (₹5,000 / month)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-600">Estimated Monthly Savings:</span>
+                    <span class="text-2xl font-bold text-green-600" id="roi-savings">₹ 100,000</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-600">Net Profit (After SaaS Cost):</span>
+                    <span class="text-xl font-bold text-gray-800" id="roi-net">₹ 85,000</span>
+                </div>
+            </div>
+
+            <div class="mt-4 text-center">
+                <p class="text-sm text-gray-600">Your SaaS payback period is:</p>
+                <h3 class="text-3xl font-extrabold text-blue-600 mt-1" id="roi-payback">4.5 Days</h3>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // PDF Export Logic
+        function downloadPDF() {
+            const btn = document.getElementById('pdf-btn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Generating...';
+            
+            const element = document.querySelector('main');
+            
+            // Adjust styles slightly for PDF
+            element.style.height = 'auto';
+            element.style.overflow = 'visible';
+
+            const opt = {
+                margin: 0.5,
+                filename: 'FACTOR-X_Monthly_Report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = '<i class="fas fa-check mr-1"></i> Downloaded!';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-file-pdf mr-1"></i> Export Report';
+                    element.style.height = '100vh';
+                    element.style.overflowY = 'auto';
+                }, 2000);
+            });
+        }
+
+        // ROI Calculator Logic
+        function openRoiModal() {
+            document.getElementById('roiModal').classList.remove('hidden');
+            calculateRoi();
+        }
+
+        function closeRoiModal() {
+            document.getElementById('roiModal').classList.add('hidden');
+        }
+
+        function calculateRoi() {
+            const bill = parseFloat(document.getElementById('roi-bill').value);
+            const planCost = parseFloat(document.getElementById('roi-plan').value);
+            
+            // Assuming the 19.98% savings our AI demonstrated
+            const savings = bill * 0.1998;
+            const net = savings - planCost;
+            
+            document.getElementById('roi-savings').innerText = "₹ " + savings.toLocaleString(undefined, {maximumFractionDigits: 0});
+            document.getElementById('roi-net').innerText = "₹ " + net.toLocaleString(undefined, {maximumFractionDigits: 0});
+            
+            if (savings > 0) {
+                // Days to pay back the monthly subscription
+                const daysInMonth = 30;
+                const paybackDays = (planCost / savings) * daysInMonth;
+                document.getElementById('roi-payback').innerText = paybackDays.toFixed(1) + " Days";
+                document.getElementById('roi-payback').className = "text-3xl font-extrabold text-green-600 mt-1";
+            } else {
+                document.getElementById('roi-payback').innerText = "N/A";
+            }
+        }
+
+        document.getElementById('roi-bill').addEventListener('input', calculateRoi);
+        document.getElementById('roi-plan').addEventListener('change', calculateRoi);
+
+        const API_BASE = "http://127.0.0.1:8000/api";
+
+
+        async function fetchDashboardData() {
+            try {
+                // Fetch KPIs
+                const metricsRes = await fetch(`${API_BASE}/metrics`);
+                const metrics = await metricsRes.json();
+                
+                document.getElementById('kpi-energy').innerHTML = `${metrics.total_energy_optimized.toLocaleString()} <span class="text-lg text-gray-500 font-normal">kWh</span>`;
+                document.getElementById('kpi-energy-diff').innerHTML = `<i class="fas fa-arrow-down mr-1"></i> ${metrics.reduction_pct}%`;
+                
+                document.getElementById('kpi-sec').innerHTML = `${metrics.sec_optimized} <span class="text-lg text-gray-500 font-normal">kWh/u</span>`;
+                document.getElementById('kpi-sec-diff').innerHTML = `<i class="fas fa-arrow-down mr-1"></i> ${metrics.reduction_pct}%`;
+                
+                document.getElementById('kpi-co2').innerHTML = `${metrics.co2_offset_tons} <span class="text-lg text-gray-500 font-normal">tons</span>`;
+
+                // Fetch Chart Data
+                const baselineRes = await fetch(`${API_BASE}/energy/baseline`);
+                const baseline = await baselineRes.json();
+                
+                const optRes = await fetch(`${API_BASE}/energy/optimized`);
+                const optimized = await optRes.json();
+
+                renderChart(baseline.labels, baseline.data, optimized.data);
+
+                // Fetch Anomalies
+                const anomalyRes = await fetch(`${API_BASE}/anomalies`);
+                const anomalyData = await anomalyRes.json();
+                renderAnomalies(anomalyData.anomalies);
+
+            } catch (e) {
+                console.error("API Error. Make sure the FastAPI server is running at http://127.0.0.1:8000", e);
+                document.getElementById('alert-container').innerHTML = 
+                    `<p class="text-sm text-red-500 text-center"><i class="fas fa-exclamation-triangle"></i> Cannot connect to API.</p>
+                     <p class="text-xs text-gray-500 text-center mt-2">Run: <code>cd api && uvicorn main:app --reload</code></p>`;
+            }
+        }
+
+        function renderChart(labels, baselineData, optData) {
+            const ctx = document.getElementById('energyChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Baseline Energy (kWh)',
+                            data: baselineData,
+                            borderColor: '#9CA3AF',
+                            backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Optimized Energy (kWh)',
+                            data: optData,
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        function renderAnomalies(anomalies) {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = "";
+            
+            if (anomalies.length === 0) {
+                container.innerHTML = `<p class="text-sm text-gray-500 text-center">No anomalies detected recently.</p>`;
+                return;
+            }
+
+            // Show latest 2 anomalies to fit UI
+            anomalies.slice(0, 2).forEach(anom => {
+                const date = new Date(anom.timestamp).toLocaleDateString();
+                const html = `
+                <div class="flex items-start gap-3 p-3 bg-red-50 border-l-4 border-red-500 rounded-r">
+                    <i class="fas fa-exclamation-triangle text-red-500 mt-1"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">${anom.motor} Anomaly</p>
+                        <p class="text-xs text-gray-600">Temp: ${anom.temp}°C | Vib: ${anom.vibration}mm/s | Energy: ${anom.energy}kWh</p>
+                        <p class="text-xs text-gray-400 mt-1">Detected: ${date}</p>
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // Initialize
+        fetchDashboardData();
+    </script>
+</body>
+</html>

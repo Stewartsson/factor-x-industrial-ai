@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  # The Python Data, ML, and FastAPI Backend
+  factorx-api:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: always
+
+  # The Frontend Dashboard (Served via Nginx)
+  factorx-dashboard:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./dashboard:/usr/share/nginx/html:ro
+    depends_on:
+      - factorx-api
