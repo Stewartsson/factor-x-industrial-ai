@@ -117,7 +117,7 @@
         }
 
         // Connect to SSE API
-        const evtSource = new EventSource("http://127.0.0.1:8000/api/stream");
+        const evtSource = new EventSource("/api/stream");
         updateTerminal("Connected to FACTOR-X Edge API.");
 
         evtSource.onmessage = function(event) {

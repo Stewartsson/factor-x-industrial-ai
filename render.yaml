@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: factor-x-platform
+    env: python
+    buildCommand: "pip install -r requirements.txt && cd scripts && python simulate_factory_data.py && python train_anomaly_detector.py"
+    startCommand: "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

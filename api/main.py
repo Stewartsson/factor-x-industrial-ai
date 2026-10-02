@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import pandas as pd
 import json
 import asyncio
+import os
 
 app = FastAPI(title="FACTOR-X Industrial API")
 
@@ -107,3 +110,6 @@ async def live_data_generator():
 @app.get("/api/stream")
 async def stream_live_data():
     return StreamingResponse(live_data_generator(), media_type="text/event-stream")
+
+# Serve the dashboard files directly (makes Cloud Deployment 1-click)
+app.mount("/", StaticFiles(directory="../dashboard", html=True), name="dashboard")
