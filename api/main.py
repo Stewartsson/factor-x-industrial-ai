@@ -10,6 +10,8 @@ import os
 
 app = FastAPI(title="FACTOR-X Industrial API")
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # Allow CORS for the local HTML dashboard
 app.add_middleware(
     CORSMiddleware,
@@ -18,8 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def load_data(filepath):
+def load_data(filename):
     try:
+        filepath = os.path.join(BASE_DIR, "data", filename)
         df = pd.read_csv(filepath)
         # For the chart, we only need daily aggregates to keep it fast
         df['date'] = pd.to_datetime(df['timestamp']).dt.date
@@ -38,16 +41,17 @@ def root():
 
 @app.get("/api/energy/baseline")
 def get_baseline_energy():
-    return load_data("../data/baseline.csv")
+    return load_data("baseline.csv")
 
 @app.get("/api/energy/optimized")
 def get_optimized_energy():
-    return load_data("../data/optimized.csv")
+    return load_data("optimized.csv")
 
 @app.get("/api/anomalies")
 def get_anomalies():
     try:
-        df = pd.read_csv("../data/ai_detected_anomalies.csv")
+        filepath = os.path.join(BASE_DIR, "data", "ai_detected_anomalies.csv")
+        df = pd.read_csv(filepath)
         # Return the latest 5 anomalies
         latest = df.tail(5)
         anomalies = []
@@ -65,8 +69,8 @@ def get_anomalies():
 
 @app.get("/api/metrics")
 def get_metrics():
-    baseline = load_data("../data/baseline.csv")
-    optimized = load_data("../data/optimized.csv")
+    baseline = load_data("baseline.csv")
+    optimized = load_data("optimized.csv")
     
     # We know production is 4853 from our simulation
     total_prod = 4853
@@ -88,8 +92,11 @@ def get_metrics():
 
 async def live_data_generator():
     try:
-        df = pd.read_csv("../data/baseline.csv")
-        anomalies_df = pd.read_csv("../data/ai_detected_anomalies.csv")
+        base_path = os.path.join(BASE_DIR, "data", "baseline.csv")
+        anom_path = os.path.join(BASE_DIR, "data", "ai_detected_anomalies.csv")
+        
+        df = pd.read_csv(base_path)
+        anomalies_df = pd.read_csv(anom_path)
         anomaly_times = set(anomalies_df['timestamp'].tolist())
         
         while True:
@@ -112,4 +119,5 @@ async def stream_live_data():
     return StreamingResponse(live_data_generator(), media_type="text/event-stream")
 
 # Serve the dashboard files directly (makes Cloud Deployment 1-click)
-app.mount("/", StaticFiles(directory="../dashboard", html=True), name="dashboard")
+dashboard_path = os.path.join(BASE_DIR, "dashboard")
+app.mount("/", StaticFiles(directory=dashboard_path, html=True), name="dashboard")
