@@ -35,9 +35,7 @@ def load_data(filename):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/")
-def root():
-    return {"status": "FACTOR-X API is running"}
+
 
 @app.get("/api/energy/baseline")
 def get_baseline_energy():
